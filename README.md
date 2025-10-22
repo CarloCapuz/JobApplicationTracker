@@ -29,20 +29,82 @@ A personal desktop web application for tracking job applications with a modern d
 
 1. **Clone or download** this project to your local machine
 
-2. **Install Python dependencies**:
+2. **Create a virtual environment** (recommended):
+   ```bash
+   python -m venv venv
+   # Windows:
+   venv\Scripts\activate
+   # Mac/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install Python dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the application**:
+4. **Run the application**:
    ```bash
    python app.py
    ```
 
-4. **Open your browser** and navigate to:
+5. **Open your browser** and navigate to:
    ```
    http://localhost:5000
    ```
+
+## Testing
+
+The project includes comprehensive unit tests to ensure reliability and maintainability.
+
+### Running Tests
+
+**Run all tests:**
+```bash
+python -m pytest
+```
+
+**Run tests with coverage report:**
+```bash
+python -m pytest --cov=app --cov-report=html
+```
+
+**Run specific test files:**
+```bash
+python -m pytest tests/test_database.py
+python -m pytest tests/test_api.py
+python -m pytest tests/test_summary.py
+```
+
+**Use the test runner script:**
+```bash
+python run_tests.py all        # Run all tests
+python run_tests.py unit       # Run unit tests only
+python run_tests.py integration # Run integration tests only
+python run_tests.py quick      # Run tests with quick failure mode
+```
+
+### Test Coverage
+
+The test suite covers:
+- **Database Operations**: Schema creation, constraints, data integrity
+- **API Endpoints**: CRUD operations, error handling, data validation
+- **Summary Statistics**: Accurate counting and aggregation
+- **Edge Cases**: Invalid data, missing fields, non-existent records
+
+### Test Structure
+
+```
+tests/
+├── conftest.py          # Test configuration and fixtures
+├── test_database.py     # Database operation tests
+├── test_api.py          # API endpoint tests
+└── test_summary.py      # Summary statistics tests
+```
+
+### Test Configuration
+
+Tests use a temporary SQLite database to ensure isolation and prevent data corruption. Each test runs in a clean environment with its own database instance.
 
 ## Usage
 

@@ -10,7 +10,8 @@ DATABASE = 'job_tracker.db'
 
 def init_db():
     """Initialize the database with the required tables"""
-    conn = sqlite3.connect(DATABASE)
+    db_path = app.config.get('DATABASE', DATABASE)
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -30,7 +31,8 @@ def init_db():
 
 def get_db_connection():
     """Get database connection"""
-    conn = sqlite3.connect(DATABASE)
+    db_path = app.config.get('DATABASE', DATABASE)
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -69,6 +71,13 @@ def add_application():
     if request.method == 'POST':
         data = request.get_json()
         
+        # Validate required fields
+        required_fields = ['company_name', 'job_role', 'applied_date', 'status']
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        
+        if missing_fields:
+            return jsonify({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -79,7 +88,7 @@ def add_application():
             data['company_name'],
             data['job_role'],
             data['applied_date'],
-            data['url'],
+            data.get('url', ''),  # Use empty string if URL not provided
             data['status']
         ))
         
@@ -99,6 +108,13 @@ def edit_application(app_id):
     if request.method == 'POST':
         data = request.get_json()
         
+        # Validate required fields
+        required_fields = ['company_name', 'job_role', 'applied_date', 'status']
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        
+        if missing_fields:
+            return jsonify({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+        
         cursor.execute('''
             UPDATE job_applications 
             SET company_name = ?, job_role = ?, applied_date = ?, 
@@ -108,7 +124,7 @@ def edit_application(app_id):
             data['company_name'],
             data['job_role'],
             data['applied_date'],
-            data['url'],
+            data.get('url', ''),  # Use empty string if URL not provided
             data['status'],
             app_id
         ))

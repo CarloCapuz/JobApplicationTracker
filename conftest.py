@@ -4,7 +4,7 @@ import tempfile
 import sqlite3
 from app import app, init_db, get_db_connection
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def client():
     """Create a test client for the Flask application."""
     # Create a temporary database file
@@ -13,21 +13,21 @@ def client():
     # Store original database path
     original_db = app.config.get('DATABASE', 'job_tracker.db')
     
-    # Set test database
+    # Temporarily set test database
     app.config['DATABASE'] = db_path
     app.config['TESTING'] = True
     
-    with app.test_client() as client:
-        with app.app_context():
-            init_db()
-        yield client
-    
-    # Clean up
-    os.close(db_fd)
-    os.unlink(db_path)
-    
-    # Restore original database path
-    app.config['DATABASE'] = original_db
+    try:
+        with app.test_client() as client:
+            with app.app_context():
+                init_db()
+            yield client
+    finally:
+        # Always restore original database path
+        app.config['DATABASE'] = original_db
+        # Clean up temporary database
+        os.close(db_fd)
+        os.unlink(db_path)
 
 @pytest.fixture
 def sample_data():

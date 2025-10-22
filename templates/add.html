@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Job Application - Job Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Add New Job Application</h1>
+            <div class="header-controls">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to List</a>
+            </div>
+        </header>
+
+        <div class="form-container">
+            <form id="application-form" class="application-form">
+                <div class="form-group">
+                    <label for="company_name">Company Name *</label>
+                    <input type="text" id="company_name" name="company_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="job_role">Job Role *</label>
+                    <input type="text" id="job_role" name="job_role" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="applied_date">Applied Date *</label>
+                    <input type="date" id="applied_date" name="applied_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="url">Job URL</label>
+                    <input type="url" id="url" name="url" placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label>Status *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Waiting for hearback" checked>
+                            <span class="radio-text">Waiting for hearback</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Denied">
+                            <span class="radio-text">Denied</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Interview">
+                            <span class="radio-text">Interview</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Interview 2">
+                            <span class="radio-text">Interview 2</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Interview 3">
+                            <span class="radio-text">Interview 3</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Offer">
+                            <span class="radio-text">Offer</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Application</button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Set today's date as default
+        document.getElementById('applied_date').valueAsDate = new Date();
+    </script>
+</body>
+</html>
+

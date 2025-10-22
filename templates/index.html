@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Application Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Job Application Tracker</h1>
+            <div class="header-controls">
+                <a href="{{ url_for('add_application') }}" class="btn btn-primary">Add New Application</a>
+            </div>
+        </header>
+
+        <!-- Summary Header -->
+        <div class="summary-header" id="summary-header">
+            <div class="summary-card">
+                <h3>Total Applications</h3>
+                <span class="summary-number" id="total-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Waiting for Hearback</h3>
+                <span class="summary-number" id="waiting-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Denied</h3>
+                <span class="summary-number" id="denied-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Interview</h3>
+                <span class="summary-number" id="interview-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Interview 2</h3>
+                <span class="summary-number" id="interview2-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Interview 3</h3>
+                <span class="summary-number" id="interview3-count">0</span>
+            </div>
+            <div class="summary-card">
+                <h3>Offer</h3>
+                <span class="summary-number" id="offer-count">0</span>
+            </div>
+        </div>
+
+        <!-- Search and Sort Controls -->
+        <div class="controls-container">
+            <div class="search-controls">
+                <label for="search-input">Search:</label>
+                <input type="text" id="search-input" placeholder="Search by company name, job role, or status..." onkeyup="filterApplications()">
+                <button id="clear-search" onclick="clearSearch()" class="btn btn-secondary">Clear</button>
+            </div>
+            
+            <div class="sort-controls">
+                <label for="sort-select">Sort by:</label>
+                <select id="sort-select" onchange="sortApplications()">
+                    <option value="applied_date" {% if current_sort == 'applied_date' %}selected{% endif %}>Applied Date</option>
+                    <option value="company_name" {% if current_sort == 'company_name' %}selected{% endif %}>Company Name</option>
+                    <option value="job_role" {% if current_sort == 'job_role' %}selected{% endif %}>Job Role</option>
+                    <option value="status" {% if current_sort == 'status' %}selected{% endif %}>Status</option>
+                    <option value="last_updated" {% if current_sort == 'last_updated' %}selected{% endif %}>Last Updated</option>
+                </select>
+                
+                <label for="order-select">Order:</label>
+                <select id="order-select" onchange="sortApplications()">
+                    <option value="desc" {% if current_order == 'desc' %}selected{% endif %}>Newest First</option>
+                    <option value="asc" {% if current_order == 'asc' %}selected{% endif %}>Oldest First</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="applications-grid">
+            {% if applications %}
+                {% for app in applications %}
+                <div class="application-card" data-status="{{ app.status }}">
+                    <div class="card-header">
+                        <h3>{{ app.company_name }}</h3>
+                        <span class="status-badge status-{{ app.status.lower().replace(' ', '-') }}">
+                            {{ app.status }}
+                        </span>
+                    </div>
+                    
+                    <div class="card-content">
+                        <p><strong>Position:</strong> {{ app.job_role }}</p>
+                        <p><strong>Applied:</strong> {{ app.applied_date }}</p>
+                        {% if app.url %}
+                        <p><strong>URL:</strong> <a href="{{ app.url }}" target="_blank" class="url-link">View Job Posting</a></p>
+                        {% endif %}
+                        <p><strong>Last Updated:</strong> {{ app.last_updated }}</p>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <a href="{{ url_for('edit_application', app_id=app.id) }}" class="btn btn-secondary">Edit</a>
+                        <button onclick="deleteApplication({{ app.id }})" class="btn btn-danger">Delete</button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>No job applications yet</h2>
+                    <p>Start tracking your job applications by adding your first one!</p>
+                    <a href="{{ url_for('add_application') }}" class="btn btn-primary">Add First Application</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+

@@ -11,7 +11,9 @@
         <header>
             <h1>Job Application Tracker</h1>
             <div class="header-controls">
+                <span class="user-info">Welcome, {{ current_user.id }}!</span>
                 <a href="{{ url_for('add_application') }}" class="btn btn-primary">Add New Application</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
             </div>
         </header>
 

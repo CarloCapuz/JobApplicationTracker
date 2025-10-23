@@ -1,12 +1,49 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
 import sqlite3
 import os
+from dotenv import load_dotenv
+import hashlib
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
 
 # Database configuration
 DATABASE = 'job_tracker.db'
+
+# Simple User class for authentication
+class User(UserMixin):
+    def __init__(self, id):
+        self.id = id
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User(user_id)
+
+def hash_password(password):
+    """Hash password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_credentials(username, password):
+    """Verify user credentials against environment variables"""
+    expected_username = os.getenv('FLASK_USERNAME')
+    expected_password = os.getenv('FLASK_PASSWORD')
+    
+    if not expected_username or not expected_password:
+        return False
+    
+    return username == expected_username and hash_password(password) == hash_password(expected_password)
 
 def init_db():
     """Initialize the database with the required tables"""
@@ -36,7 +73,34 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if verify_credentials(username, password):
+            user = User(username)
+            login_user(user)
+            flash('Successfully logged in!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        else:
+            flash('Invalid username or password', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Logout user"""
+    logout_user()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     """Main page showing all job applications"""
     conn = get_db_connection()
@@ -66,6 +130,7 @@ def index():
                          current_sort=sort_by, current_order=sort_order)
 
 @app.route('/add', methods=['GET', 'POST'])
+@login_required
 def add_application():
     """Add a new job application"""
     if request.method == 'POST':
@@ -100,6 +165,7 @@ def add_application():
     return render_template('add.html')
 
 @app.route('/edit/<int:app_id>', methods=['GET', 'POST'])
+@login_required
 def edit_application(app_id):
     """Edit an existing job application"""
     conn = get_db_connection()
@@ -144,6 +210,7 @@ def edit_application(app_id):
     return render_template('edit.html', application=application)
 
 @app.route('/delete/<int:app_id>', methods=['POST'])
+@login_required
 def delete_application(app_id):
     """Delete a job application"""
     conn = get_db_connection()
@@ -156,6 +223,7 @@ def delete_application(app_id):
     return jsonify({'success': True, 'message': 'Job application deleted successfully'})
 
 @app.route('/api/applications')
+@login_required
 def api_applications():
     """API endpoint to get all applications as JSON"""
     conn = get_db_connection()
@@ -195,6 +263,7 @@ def api_applications():
     return jsonify(apps_list)
 
 @app.route('/api/summary')
+@login_required
 def api_summary():
     """API endpoint to get job application summary statistics"""
     conn = get_db_connection()
@@ -225,5 +294,7 @@ def api_summary():
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)
 

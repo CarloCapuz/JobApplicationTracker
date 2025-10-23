@@ -54,6 +54,13 @@ header h1 {
 .header-controls {
     display: flex;
     gap: 15px;
+    align-items: center;
+}
+
+.user-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 /* Buttons */

@@ -4,7 +4,7 @@ A personal desktop web application for tracking job applications with a modern d
 
 ## Features
 
-- **Add Job Applications**: Track company name, job role, applied date, URL, and status
+- **Add Job Applications**: Track company name, job role, applied date, URL, status, and Notes/Additional Info
 - **Status Tracking**: Monitor applications through different stages:
   - Waiting for hearback
   - Denied
@@ -13,6 +13,9 @@ A personal desktop web application for tracking job applications with a modern d
   - Interview 3
   - Offer
 - **Sorting**: Sort applications by company name, job role, applied date, status, or last updated date
+- **Notes / Additional Info**: Large free-text field for IDs, confirmation numbers, interview details, etc. Shown on cards and editable in Add/Edit
+- **Clickable Summary Filters**: Click any header card (Total, Waiting for hearback, Denied, Interview x, Offer) to filter the list; combines with search
+- **Authentication**: Protected with login via environment variables (`FLASK_USERNAME`, `FLASK_PASSWORD`)
 - **Edit/Delete**: Update or remove existing applications
 - **Dark Mode**: Modern, easy-on-the-eyes dark theme
 - **Responsive Design**: Works on desktop and mobile devices
@@ -43,12 +46,25 @@ A personal desktop web application for tracking job applications with a modern d
    pip install -r requirements.txt
    ```
 
-4. **Run the application**:
+4. **Create a .env file (credentials and config)**:
+   - Easiest: auto-generate a starter file
+   ```bash
+   python setup.py
+   ```
+   - Or manually create `.env` with at least:
+   ```
+   FLASK_USERNAME=your_username
+   FLASK_PASSWORD=your_password
+   SECRET_KEY=your_random_secret
+   FLASK_ENV=development
+   ```
+
+5. **Run the application**:
    ```bash
    python app.py
    ```
 
-5. **Open your browser** and navigate to:
+6. **Open your browser** and navigate to:
    ```
    http://localhost:5000
    ```
@@ -116,12 +132,15 @@ Tests use a temporary SQLite database to ensure isolation and prevent data corru
    - Applied Date (use the date picker)
    - Job URL (optional)
    - Status (select from radio buttons)
+   - Notes / Additional Information (optional free text)
 3. Click "Add Application"
 
 ### Managing Applications
 - **View All**: See all applications in a card-based layout
+- **Filter by Status**: Click any summary header card to filter; click Total to clear
+- **Search**: Live search across company, role, status, and notes
 - **Sort**: Use the sort dropdowns to organize by different criteria
-- **Edit**: Click "Edit" on any application card to modify details
+- **Edit**: Click "Edit" on any application card to modify details (including notes)
 - **Delete**: Click "Delete" to remove an application (with confirmation)
 
 ### Keyboard Shortcuts
@@ -133,6 +152,10 @@ Tests use a temporary SQLite database to ensure isolation and prevent data corru
 ```
 Tracker/
 ├── app.py                 # Flask application
+├── wsgi.py                # WSGI entry point (used by Vercel)
+├── vercel.json            # Vercel deployment config
+├── setup.py               # Setup helper (creates .env)
+├── .gitignore             # Ensures .env and DB are not committed
 ├── requirements.txt       # Python dependencies
 ├── job_tracker.db         # SQLite database (created automatically)
 ├── templates/             # HTML templates
@@ -146,7 +169,7 @@ Tracker/
 
 ## Database Schema
 
-The application uses a SQLite database with the following structure:
+The application uses a SQLite database with the following structure (includes `notes`):
 
 ```sql
 CREATE TABLE job_applications (
@@ -156,6 +179,7 @@ CREATE TABLE job_applications (
     applied_date DATE NOT NULL,
     url TEXT,
     status TEXT NOT NULL DEFAULT 'Waiting for hearback',
+    notes TEXT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -182,14 +206,30 @@ Modify the CSS variables in `static/style.css`:
 ## Troubleshooting
 
 ### Database Issues
-- If you encounter database errors, delete `job_tracker.db` and restart the application
-- The database will be recreated automatically
+- The app will auto-migrate to add `notes` if missing. For a clean reset, stop the app, delete `job_tracker.db`, and start again
 
 ### Port Already in Use
 - If port 5000 is busy, modify the port in `app.py`:
   ```python
   app.run(debug=True, host='0.0.0.0', port=5001)  # Change port number
   ```
+
+## Deployment (Vercel)
+
+Vercel offers a generous free tier and simple deployment.
+
+1. Ensure these files exist: `vercel.json`, `wsgi.py`, `requirements.txt`
+2. Push to GitHub (make sure `.env` and `job_tracker.db` are ignored via `.gitignore`)
+3. Import the repo in Vercel or run `vercel` from the project directory
+4. In Vercel dashboard, add Environment Variables:
+```
+FLASK_USERNAME=your_username
+FLASK_PASSWORD=your_password
+SECRET_KEY=your_random_secret
+FLASK_ENV=production
+```
+
+Note: SQLite is not persistent on serverless platforms; for production persistence, use an external DB (e.g., Supabase, Postgres). For personal/light use, the current setup works but data resets on redeploy.
 
 ### Browser Compatibility
 - Works best with modern browsers (Chrome, Firefox, Safari, Edge)

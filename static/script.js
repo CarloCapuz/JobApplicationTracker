@@ -3,6 +3,7 @@
 // Global variables
 let allApplications = [];
 let filteredApplications = [];
+let activeStatusFilter = 'all';
 
 // Utility functions
 function showNotification(message, type = 'success') {
@@ -82,16 +83,24 @@ function loadApplications() {
 }
 
 // Filter applications based on search input
-function filterApplications() {
+function applyFilters() {
     const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
     
-    if (searchTerm === '') {
-        filteredApplications = [...allApplications];
-    } else {
-        filteredApplications = allApplications.filter(app => {
+    // Start from all apps
+    filteredApplications = [...allApplications];
+    
+    // Apply status filter (if not 'all')
+    if (activeStatusFilter !== 'all') {
+        filteredApplications = filteredApplications.filter(app => app.status === activeStatusFilter);
+    }
+
+    // Apply search filter
+    if (searchTerm !== '') {
+        filteredApplications = filteredApplications.filter(app => {
             return app.company_name.toLowerCase().includes(searchTerm) ||
                    app.job_role.toLowerCase().includes(searchTerm) ||
-                   app.status.toLowerCase().includes(searchTerm);
+                   app.status.toLowerCase().includes(searchTerm) ||
+                   (app.notes ? app.notes.toLowerCase().includes(searchTerm) : false);
         });
     }
     
@@ -101,7 +110,7 @@ function filterApplications() {
 // Clear search
 function clearSearch() {
     document.getElementById('search-input').value = '';
-    filterApplications();
+    applyFilters();
 }
 
 // Render applications to the DOM
@@ -132,6 +141,11 @@ function renderApplications() {
                 <p><strong>Position:</strong> ${app.job_role}</p>
                 <p><strong>Applied:</strong> ${app.applied_date}</p>
                 ${app.url ? `<p><strong>URL:</strong> <a href="${app.url}" target="_blank" class="url-link">View Job Posting</a></p>` : ''}
+                ${app.notes && app.notes.trim() !== '' ? `
+                <div class="notes-section">
+                    <p><strong>Notes:</strong></p>
+                    <p class="notes-text">${app.notes.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                </div>` : ''}
                 <p><strong>Last Updated:</strong> ${app.last_updated}</p>
             </div>
             
@@ -215,6 +229,17 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Summary header click filters
+    const summaryHeader = document.getElementById('summary-header');
+    if (summaryHeader && window.location.pathname === '/') {
+        summaryHeader.addEventListener('click', (e) => {
+            const card = e.target.closest('.summary-card.clickable');
+            if (!card) return;
+            const status = card.getAttribute('data-status');
+            setStatusFilter(status);
+        });
+    }
 });
 
 // Add fade out animation
@@ -245,6 +270,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Set status filter and update UI
+function setStatusFilter(status) {
+    activeStatusFilter = status || 'all';
+    updateSummaryActiveState();
+    applyFilters();
+}
+
+function updateSummaryActiveState() {
+    const cards = document.querySelectorAll('.summary-card.clickable');
+    cards.forEach(card => {
+        const cardStatus = card.getAttribute('data-status');
+        if ((activeStatusFilter === 'all' && cardStatus === 'all') || cardStatus === activeStatusFilter) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    });
+}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', function(e) {

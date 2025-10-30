@@ -59,9 +59,17 @@ def init_db():
             applied_date DATE NOT NULL,
             url TEXT,
             status TEXT NOT NULL DEFAULT 'Waiting for hearback',
+            notes TEXT,
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Ensure the notes column exists for databases created before notes was added
+    try:
+        cursor.execute("ALTER TABLE job_applications ADD COLUMN notes TEXT")
+    except Exception:
+        # Column already exists; ignore
+        pass
     
     conn.commit()
     conn.close()
@@ -147,14 +155,15 @@ def add_application():
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO job_applications (company_name, job_role, applied_date, url, status)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO job_applications (company_name, job_role, applied_date, url, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             data['company_name'],
             data['job_role'],
             data['applied_date'],
             data.get('url', ''),  # Use empty string if URL not provided
-            data['status']
+            data['status'],
+            data.get('notes', '')  # Use empty string if notes not provided
         ))
         
         conn.commit()
@@ -184,7 +193,7 @@ def edit_application(app_id):
         cursor.execute('''
             UPDATE job_applications 
             SET company_name = ?, job_role = ?, applied_date = ?, 
-                url = ?, status = ?, last_updated = CURRENT_TIMESTAMP
+                url = ?, status = ?, notes = ?, last_updated = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
             data['company_name'],
@@ -192,6 +201,7 @@ def edit_application(app_id):
             data['applied_date'],
             data.get('url', ''),  # Use empty string if URL not provided
             data['status'],
+            data.get('notes', ''),  # Use empty string if notes not provided
             app_id
         ))
         
@@ -202,12 +212,18 @@ def edit_application(app_id):
     
     # GET request - fetch application data
     application = cursor.execute('SELECT * FROM job_applications WHERE id = ?', (app_id,)).fetchone()
-    conn.close()
     
     if not application:
+        conn.close()
         return redirect(url_for('index'))
     
-    return render_template('edit.html', application=application)
+    # Convert to dict and ensure notes key exists for template safety
+    application_dict = dict(application)
+    if 'notes' not in application_dict:
+        application_dict['notes'] = ''
+    conn.close()
+    
+    return render_template('edit.html', application=application_dict)
 
 @app.route('/delete/<int:app_id>', methods=['POST'])
 @login_required
@@ -247,17 +263,19 @@ def api_applications():
     applications = cursor.execute(query).fetchall()
     conn.close()
     
-    # Convert to list of dictionaries
+    # Convert to list of dictionaries (sqlite3.Row doesn't support .get)
     apps_list = []
     for app in applications:
+        row = dict(app)
         apps_list.append({
-            'id': app['id'],
-            'company_name': app['company_name'],
-            'job_role': app['job_role'],
-            'applied_date': app['applied_date'],
-            'url': app['url'],
-            'status': app['status'],
-            'last_updated': app['last_updated']
+            'id': row.get('id'),
+            'company_name': row.get('company_name'),
+            'job_role': row.get('job_role'),
+            'applied_date': row.get('applied_date'),
+            'url': row.get('url'),
+            'status': row.get('status'),
+            'notes': row.get('notes', ''),
+            'last_updated': row.get('last_updated')
         })
     
     return jsonify(apps_list)

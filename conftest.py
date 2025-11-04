@@ -17,10 +17,20 @@ def client():
     app.config['DATABASE'] = db_path
     app.config['TESTING'] = True
     
+    # Set test credentials for authentication
+    os.environ['FLASK_USERNAME'] = 'test_user'
+    os.environ['FLASK_PASSWORD'] = 'test_password'
+    os.environ['SECRET_KEY'] = 'test_secret_key'
+    
     try:
         with app.test_client() as client:
             with app.app_context():
                 init_db()
+            # Login via POST request to /login route
+            client.post('/login', data={
+                'username': 'test_user',
+                'password': 'test_password'
+            }, follow_redirects=True)
             yield client
     finally:
         # Always restore original database path
@@ -28,6 +38,11 @@ def client():
         # Clean up temporary database
         os.close(db_fd)
         os.unlink(db_path)
+        # Clean up environment variables
+        if 'FLASK_USERNAME' in os.environ and os.environ['FLASK_USERNAME'] == 'test_user':
+            del os.environ['FLASK_USERNAME']
+            del os.environ['FLASK_PASSWORD']
+            del os.environ['SECRET_KEY']
 
 @pytest.fixture
 def sample_data():
@@ -37,7 +52,8 @@ def sample_data():
         'job_role': 'Software Engineer',
         'applied_date': '2024-01-15',
         'url': 'https://example.com/job',
-        'status': 'Waiting for hearback'
+        'status': 'Waiting for hearback',
+        'notes': 'Test notes field'
     }
 
 @pytest.fixture

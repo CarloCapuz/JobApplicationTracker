@@ -290,6 +290,11 @@ function updateSummaryActiveState() {
     });
 }
 
+// Make functions globally accessible for inline event handlers
+window.applyFilters = applyFilters;
+window.clearSearch = clearSearch;
+window.setStatusFilter = setStatusFilter;
+
 // Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
     // Ctrl/Cmd + N to add new application

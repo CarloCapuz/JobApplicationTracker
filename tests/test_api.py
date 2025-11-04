@@ -226,3 +226,87 @@ def test_all_status_values(client):
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data['success'] is True
+
+def test_add_application_with_notes(client):
+    """Test adding application with notes field."""
+    data_with_notes = {
+        'company_name': 'Test Company',
+        'job_role': 'Test Role',
+        'applied_date': '2024-01-01',
+        'status': 'Waiting for hearback',
+        'notes': 'Application ID: 12345\nConfirmation: ABC123'
+    }
+    
+    response = client.post('/add', 
+                         json=data_with_notes,
+                         content_type='application/json')
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] is True
+    
+    # Verify notes are stored and returned
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert apps[0]['notes'] == 'Application ID: 12345\nConfirmation: ABC123'
+
+def test_add_application_without_notes(client):
+    """Test adding application without notes field (should default to empty string)."""
+    data_without_notes = {
+        'company_name': 'Test Company',
+        'job_role': 'Test Role',
+        'applied_date': '2024-01-01',
+        'status': 'Waiting for hearback'
+    }
+    
+    response = client.post('/add', 
+                         json=data_without_notes,
+                         content_type='application/json')
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] is True
+    
+    # Verify notes field exists but is empty
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert apps[0].get('notes', '') == ''
+
+def test_edit_application_with_notes(client, sample_data):
+    """Test editing application to add/update notes."""
+    # First add an application
+    client.post('/add', json=sample_data, content_type='application/json')
+    
+    # Then edit it with new notes
+    updated_data = sample_data.copy()
+    updated_data['notes'] = 'Updated notes: Interview scheduled for next week'
+    
+    response = client.post('/edit/1', 
+                         json=updated_data,
+                         content_type='application/json')
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] is True
+    
+    # Verify notes were updated
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert apps[0]['notes'] == 'Updated notes: Interview scheduled for next week'
+
+def test_api_applications_includes_notes(client, sample_data):
+    """Test that API applications endpoint includes notes field."""
+    client.post('/add', json=sample_data, content_type='application/json')
+    
+    response = client.get('/api/applications')
+    assert response.status_code == 200
+    
+    data = json.loads(response.data)
+    assert len(data) == 1
+    assert 'notes' in data[0]
+    assert data[0]['notes'] == 'Test notes field'

@@ -69,9 +69,14 @@ A personal desktop web application for tracking job applications with a modern d
    http://localhost:5000
    ```
 
+7. **Login** with your credentials:
+   - Username: The value from `FLASK_USERNAME` in your `.env` file
+   - Password: The value from `FLASK_PASSWORD` in your `.env` file
+   - Default (if using `setup.py`): Username and password will be shown in the setup output
+
 ## Testing
 
-The project includes comprehensive unit tests to ensure reliability and maintainability.
+The project includes comprehensive unit tests to ensure reliability and maintainability. The test suite includes **43 tests** covering all major functionality.
 
 ### Running Tests
 
@@ -80,16 +85,29 @@ The project includes comprehensive unit tests to ensure reliability and maintain
 python -m pytest
 ```
 
+**Run tests with verbose output:**
+```bash
+python -m pytest -v
+```
+
 **Run tests with coverage report:**
 ```bash
 python -m pytest --cov=app --cov-report=html
 ```
+View the coverage report by opening `htmlcov/index.html` in your browser.
 
 **Run specific test files:**
 ```bash
 python -m pytest tests/test_database.py
 python -m pytest tests/test_api.py
 python -m pytest tests/test_summary.py
+python -m pytest tests/test_app.py
+```
+
+**Run specific test functions:**
+```bash
+python -m pytest tests/test_api.py::test_add_application_with_notes
+python -m pytest tests/test_database.py::test_notes_field_optional
 ```
 
 **Use the test runner script:**
@@ -103,24 +121,103 @@ python run_tests.py quick      # Run tests with quick failure mode
 ### Test Coverage
 
 The test suite covers:
-- **Database Operations**: Schema creation, constraints, data integrity
-- **API Endpoints**: CRUD operations, error handling, data validation
-- **Summary Statistics**: Accurate counting and aggregation
-- **Edge Cases**: Invalid data, missing fields, non-existent records
+
+- **Database Operations**: 
+  - Schema creation and validation (including `notes` field)
+  - Constraints and data integrity
+  - Auto-increment IDs
+  - Default values
+  - Optional fields (URL, notes)
+
+- **API Endpoints**: 
+  - CRUD operations (Create, Read, Update, Delete)
+  - Error handling and validation
+  - Missing required fields
+  - Invalid data handling
+  - Notes field in add/edit operations
+  - API response format and structure
+
+- **Summary Statistics**: 
+  - Accurate counting by status
+  - Empty database handling
+  - Multiple applications aggregation
+  - Status consistency checks
+
+- **Authentication**: 
+  - Test fixtures automatically handle login
+  - All routes require authentication in tests
+  - Test credentials are managed automatically
+
+- **Edge Cases**: 
+  - Invalid data types
+  - Missing fields
+  - Non-existent records
+  - Empty optional fields
 
 ### Test Structure
 
 ```
 tests/
-├── conftest.py          # Test configuration and fixtures
-├── test_database.py     # Database operation tests
-├── test_api.py          # API endpoint tests
-└── test_summary.py      # Summary statistics tests
+├── conftest.py          # Test configuration, fixtures, and authentication setup
+├── test_database.py     # Database operation and schema tests (7 tests)
+├── test_api.py          # API endpoint and CRUD tests (21 tests)
+├── test_summary.py      # Summary statistics tests (9 tests)
+└── test_app.py          # Application configuration and routing tests (6 tests)
 ```
 
 ### Test Configuration
 
-Tests use a temporary SQLite database to ensure isolation and prevent data corruption. Each test runs in a clean environment with its own database instance.
+**Test Environment:**
+- Tests use a temporary SQLite database for each test run
+- Each test runs in a clean, isolated environment
+- Authentication is automatically handled via test fixtures
+- Test credentials are set up and cleaned up automatically
+
+**Test Fixtures:**
+- `client`: Provides an authenticated Flask test client
+- `sample_data`: Sample job application data with notes
+- `multiple_applications`: Multiple test applications for bulk testing
+
+**Notes Field Testing:**
+- Tests verify notes can be added, edited, and retrieved
+- Tests ensure notes field is optional (can be empty)
+- Tests verify API responses include notes field
+- Database tests verify notes column exists and is nullable
+
+### Example Test Output
+
+```
+============================= test session starts =============================
+platform win32 -- Python 3.9.5, pytest-7.4.3
+collected 43 items
+
+tests/test_api.py::test_add_application_with_notes PASSED              [ 41%]
+tests/test_database.py::test_notes_field_optional PASSED               [ 79%]
+...
+
+============================= 43 passed in 1.25s ==============================
+```
+
+## Authentication
+
+The application is protected with login authentication. You must log in before accessing any features.
+
+**First Time Setup:**
+- Run `python setup.py` to create a `.env` file with default credentials
+- Or manually create `.env` with your own `FLASK_USERNAME` and `FLASK_PASSWORD`
+- **Important**: Change default credentials before deploying to production!
+
+**Login:**
+- Visit `http://localhost:5000` - you'll be redirected to the login page
+- Enter your username and password
+- Click "Login" to access the application
+- Your session will remain active until you log out
+
+**Security:**
+- Credentials are stored in environment variables (not in code)
+- Passwords are hashed using SHA-256
+- Sessions are managed securely with Flask-Login
+- The `.env` file is excluded from Git via `.gitignore`
 
 ## Usage
 
@@ -137,11 +234,16 @@ Tests use a temporary SQLite database to ensure isolation and prevent data corru
 
 ### Managing Applications
 - **View All**: See all applications in a card-based layout
-- **Filter by Status**: Click any summary header card to filter; click Total to clear
-- **Search**: Live search across company, role, status, and notes
-- **Sort**: Use the sort dropdowns to organize by different criteria
+- **Filter by Status**: Click any summary header card (Total, Waiting for hearback, Denied, Interview, etc.) to filter by that status. Click "Total Applications" to clear the filter and show all.
+- **Search**: Type in the search bar for live filtering. Searches across:
+  - Company name
+  - Job role
+  - Status
+  - Notes/Additional Information
+  - Search works in combination with status filters (both filters apply simultaneously)
+- **Sort**: Use the sort dropdowns to organize by different criteria (applied date, company name, job role, status, or last updated)
 - **Edit**: Click "Edit" on any application card to modify details (including notes)
-- **Delete**: Click "Delete" to remove an application (with confirmation)
+- **Delete**: Click "Delete" to remove an application (with confirmation dialog)
 
 ### Keyboard Shortcuts
 - `Ctrl/Cmd + N`: Add new application
@@ -151,20 +253,29 @@ Tests use a temporary SQLite database to ensure isolation and prevent data corru
 
 ```
 Tracker/
-├── app.py                 # Flask application
+├── app.py                 # Flask application with authentication
 ├── wsgi.py                # WSGI entry point (used by Vercel)
 ├── vercel.json            # Vercel deployment config
-├── setup.py               # Setup helper (creates .env)
+├── setup.py               # Setup helper (creates .env file)
 ├── .gitignore             # Ensures .env and DB are not committed
-├── requirements.txt       # Python dependencies
+├── requirements.txt       # Python dependencies (includes Flask-Login)
+├── pytest.ini             # Pytest configuration
+├── run_tests.py           # Test runner script
 ├── job_tracker.db         # SQLite database (created automatically)
 ├── templates/             # HTML templates
-│   ├── index.html        # Main application list
-│   ├── add.html          # Add new application form
-│   └── edit.html         # Edit application form
-└── static/               # Static assets
-    ├── style.css         # Dark mode styling
-    └── script.js         # JavaScript functionality
+│   ├── index.html         # Main application list with filters
+│   ├── add.html           # Add new application form
+│   ├── edit.html          # Edit application form
+│   └── login.html         # Login page
+├── static/                # Static assets
+│   ├── style.css          # Dark mode styling
+│   └── script.js          # JavaScript functionality (filters, search)
+└── tests/                 # Test suite
+    ├── conftest.py        # Test fixtures and authentication setup
+    ├── test_database.py   # Database tests
+    ├── test_api.py        # API endpoint tests
+    ├── test_summary.py    # Summary statistics tests
+    └── test_app.py        # Application configuration tests
 ```
 
 ## Database Schema
@@ -205,14 +316,30 @@ Modify the CSS variables in `static/style.css`:
 
 ## Troubleshooting
 
+### Authentication Issues
+- **"Invalid username or password"**: 
+  - Check your `.env` file exists and contains `FLASK_USERNAME` and `FLASK_PASSWORD`
+  - Verify credentials match exactly (case-sensitive)
+  - Run `python setup.py` to create a new `.env` file if needed
+- **Redirected to login repeatedly**:
+  - Clear your browser cookies/session data
+  - Restart the Flask application
+  - Check that `SECRET_KEY` is set in your `.env` file
+
 ### Database Issues
 - The app will auto-migrate to add `notes` if missing. For a clean reset, stop the app, delete `job_tracker.db`, and start again
+- If you see database errors, the app will attempt to recreate the database automatically
 
 ### Port Already in Use
 - If port 5000 is busy, modify the port in `app.py`:
   ```python
   app.run(debug=True, host='0.0.0.0', port=5001)  # Change port number
   ```
+
+### Search/Filter Not Working
+- Ensure JavaScript is enabled in your browser
+- Clear browser cache and reload the page
+- Check browser console for JavaScript errors (F12 → Console)
 
 ## Deployment (Vercel)
 

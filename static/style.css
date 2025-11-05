@@ -282,17 +282,18 @@ header h1 {
     letter-spacing: 0.5px;
 }
 
-.status-waiting-for-hearback {
+.status-applied {
     background-color: var(--warning);
     color: white;
 }
 
-.status-denied {
+.status-denied-without-interview-visa-related,
+.status-denied-without-interview-non-visa-related {
     background-color: var(--danger);
     color: white;
 }
 
-.status-interview {
+.status-interview-1 {
     background-color: var(--accent-primary);
     color: white;
 }
@@ -334,6 +335,45 @@ header h1 {
     line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+.status-history-section {
+    background-color: rgba(74, 158, 255, 0.05);
+    border-left: 3px solid var(--accent-secondary);
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 6px;
+}
+
+.status-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.history-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.history-status {
+    color: var(--accent-primary);
+    font-weight: 500;
+    min-width: 150px;
+}
+
+.history-date {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.history-arrow {
+    color: var(--accent-secondary);
+    font-size: 1.2rem;
+    margin: 0 4px;
 }
 
 .url-link {

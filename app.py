@@ -58,10 +58,27 @@ def init_db():
             job_role TEXT NOT NULL,
             applied_date DATE NOT NULL,
             url TEXT,
-            status TEXT NOT NULL DEFAULT 'Waiting for hearback',
+            status TEXT NOT NULL DEFAULT 'Applied',
             notes TEXT,
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+    ''')
+    
+    # Create status_history table for audit tracking
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS status_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            application_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (application_id) REFERENCES job_applications(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # Create index for faster queries
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_status_history_app_id 
+        ON status_history(application_id)
     ''')
 
     # Ensure the notes column exists for databases created before notes was added
@@ -69,6 +86,14 @@ def init_db():
         cursor.execute("ALTER TABLE job_applications ADD COLUMN notes TEXT")
     except Exception:
         # Column already exists; ignore
+        pass
+    
+    # Migrate old status values to new ones
+    try:
+        cursor.execute("UPDATE job_applications SET status = 'Applied' WHERE status = 'Waiting for hearback'")
+        cursor.execute("UPDATE job_applications SET status = 'Denied without interview (visa related)' WHERE status = 'Denied'")
+        cursor.execute("UPDATE job_applications SET status = 'Interview 1' WHERE status = 'Interview'")
+    except Exception:
         pass
     
     conn.commit()
@@ -80,6 +105,36 @@ def get_db_connection():
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+def record_status_change(application_id, status):
+    """Record a status change in the history table"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO status_history (application_id, status, changed_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    ''', (application_id, status))
+    
+    conn.commit()
+    conn.close()
+
+def get_status_history(application_id):
+    """Get status history for an application"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT status, changed_at 
+        FROM status_history 
+        WHERE application_id = ? 
+        ORDER BY changed_at ASC
+    ''', (application_id,))
+    
+    history = cursor.fetchall()
+    conn.close()
+    
+    return history
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -166,6 +221,14 @@ def add_application():
             data.get('notes', '')  # Use empty string if notes not provided
         ))
         
+        app_id = cursor.lastrowid
+        
+        # Record initial status in history
+        cursor.execute('''
+            INSERT INTO status_history (application_id, status, changed_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+        ''', (app_id, data['status']))
+        
         conn.commit()
         conn.close()
         
@@ -190,6 +253,10 @@ def edit_application(app_id):
         if missing_fields:
             return jsonify({'success': False, 'message': f'Missing required fields: {", ".join(missing_fields)}'}), 400
         
+        # Get current status to check if it changed
+        current_app = cursor.execute('SELECT status FROM job_applications WHERE id = ?', (app_id,)).fetchone()
+        old_status = current_app['status'] if current_app else None
+        
         cursor.execute('''
             UPDATE job_applications 
             SET company_name = ?, job_role = ?, applied_date = ?, 
@@ -204,6 +271,13 @@ def edit_application(app_id):
             data.get('notes', ''),  # Use empty string if notes not provided
             app_id
         ))
+        
+        # Record status change if status changed
+        if old_status and old_status != data['status']:
+            cursor.execute('''
+                INSERT INTO status_history (application_id, status, changed_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (app_id, data['status']))
         
         conn.commit()
         conn.close()
@@ -267,15 +341,27 @@ def api_applications():
     apps_list = []
     for app in applications:
         row = dict(app)
+        app_id = row.get('id')
+        
+        # Get status history for this application
+        history = get_status_history(app_id)
+        status_history = []
+        for hist_entry in history:
+            status_history.append({
+                'status': hist_entry['status'],
+                'changed_at': hist_entry['changed_at']
+            })
+        
         apps_list.append({
-            'id': row.get('id'),
+            'id': app_id,
             'company_name': row.get('company_name'),
             'job_role': row.get('job_role'),
             'applied_date': row.get('applied_date'),
             'url': row.get('url'),
             'status': row.get('status'),
             'notes': row.get('notes', ''),
-            'last_updated': row.get('last_updated')
+            'last_updated': row.get('last_updated'),
+            'status_history': status_history
         })
     
     return jsonify(apps_list)

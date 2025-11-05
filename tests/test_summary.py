@@ -23,7 +23,7 @@ def test_api_summary_single_application(client, sample_data):
     
     data = json.loads(response.data)
     assert data['total'] == 1
-    assert data['by_status']['Waiting for hearback'] == 1
+    assert data['by_status']['Applied'] == 1
 
 def test_api_summary_multiple_applications(client, multiple_applications):
     """Test summary endpoint with multiple applications."""
@@ -34,9 +34,9 @@ def test_api_summary_multiple_applications(client, multiple_applications):
     
     data = json.loads(response.data)
     assert data['total'] == 4
-    assert data['by_status']['Waiting for hearback'] == 1
-    assert data['by_status']['Denied'] == 1
-    assert data['by_status']['Interview'] == 1
+    assert data['by_status']['Applied'] == 1
+    assert data['by_status']['Denied without interview (visa related)'] == 1
+    assert data['by_status']['Interview 1'] == 1
     assert data['by_status']['Offer'] == 1
 
 def test_api_summary_after_deletion(client, multiple_applications):
@@ -59,7 +59,7 @@ def test_api_summary_after_edit(client, sample_data):
     
     # Edit status
     updated_data = sample_data.copy()
-    updated_data['status'] = 'Interview'
+    updated_data['status'] = 'Interview 1'
     client.post('/edit/1', json=updated_data, content_type='application/json')
     
     response = client.get('/api/summary')
@@ -67,15 +67,16 @@ def test_api_summary_after_edit(client, sample_data):
     
     data = json.loads(response.data)
     assert data['total'] == 1
-    assert 'Waiting for hearback' not in data['by_status']
-    assert data['by_status']['Interview'] == 1
+    assert 'Applied' not in data['by_status'] or data['by_status'].get('Applied', 0) == 0
+    assert data['by_status']['Interview 1'] == 1
 
 def test_api_summary_all_status_types(client):
     """Test summary endpoint with all status types."""
     statuses = [
-        'Waiting for hearback',
-        'Denied',
-        'Interview',
+        'Applied',
+        'Denied without interview (visa related)',
+        'Denied without interview (non-visa related)',
+        'Interview 1',
         'Interview 2',
         'Interview 3',
         'Offer'
@@ -95,7 +96,7 @@ def test_api_summary_all_status_types(client):
     assert response.status_code == 200
     
     data = json.loads(response.data)
-    assert data['total'] == 6
+    assert data['total'] == 7
     
     # Check all statuses are present
     for status in statuses:
@@ -109,7 +110,7 @@ def test_api_summary_multiple_same_status(client):
             'company_name': f'Company {i+1}',
             'job_role': f'Role {i+1}',
             'applied_date': '2024-01-01',
-            'status': 'Waiting for hearback'
+            'status': 'Applied'
         }
         client.post('/add', json=data, content_type='application/json')
     
@@ -118,7 +119,7 @@ def test_api_summary_multiple_same_status(client):
     
     data = json.loads(response.data)
     assert data['total'] == 3
-    assert data['by_status']['Waiting for hearback'] == 3
+    assert data['by_status']['Applied'] == 3
 
 def test_api_summary_response_format(client, multiple_applications):
     """Test that summary response has correct format."""

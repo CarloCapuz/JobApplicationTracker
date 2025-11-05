@@ -119,7 +119,7 @@ def test_default_values(client):
         result = cursor.fetchone()
         assert result is not None
         status = result[0]
-        assert status == 'Waiting for hearback'
+        assert status == 'Applied'
         
         # Check that last_updated is set
         cursor.execute("SELECT last_updated FROM job_applications WHERE id = 1")
@@ -163,5 +163,30 @@ def test_notes_field_optional(client):
         assert result is not None
         notes = result[0]
         assert notes == 'Application ID: 12345'
+        
+        conn.close()
+
+def test_status_history_table_exists(client):
+    """Test that status_history table exists and has correct schema."""
+    with client.application.app_context():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if table exists
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='status_history'
+        """)
+        table_exists = cursor.fetchone()
+        assert table_exists is not None
+        
+        # Check table schema
+        cursor.execute("PRAGMA table_info(status_history)")
+        columns = cursor.fetchall()
+        
+        expected_columns = ['id', 'application_id', 'status', 'changed_at']
+        actual_columns = [col[1] for col in columns]
+        for expected_col in expected_columns:
+            assert expected_col in actual_columns
         
         conn.close()

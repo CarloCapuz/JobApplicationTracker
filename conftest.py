@@ -52,7 +52,7 @@ def sample_data():
         'job_role': 'Software Engineer',
         'applied_date': '2024-01-15',
         'url': 'https://example.com/job',
-        'status': 'Waiting for hearback',
+        'status': 'Applied',
         'notes': 'Test notes field'
     }
 
@@ -65,21 +65,21 @@ def multiple_applications():
             'job_role': 'Developer',
             'applied_date': '2024-01-01',
             'url': 'https://company-a.com/job',
-            'status': 'Waiting for hearback'
+            'status': 'Applied'
         },
         {
             'company_name': 'Company B',
             'job_role': 'Engineer',
             'applied_date': '2024-01-02',
             'url': 'https://company-b.com/job',
-            'status': 'Denied'
+            'status': 'Denied without interview (visa related)'
         },
         {
             'company_name': 'Company C',
             'job_role': 'Analyst',
             'applied_date': '2024-01-03',
             'url': 'https://company-c.com/job',
-            'status': 'Interview'
+            'status': 'Interview 1'
         },
         {
             'company_name': 'Company D',

@@ -6,15 +6,17 @@ A personal desktop web application for tracking job applications with a modern d
 
 - **Add Job Applications**: Track company name, job role, applied date, URL, status, and Notes/Additional Info
 - **Status Tracking**: Monitor applications through different stages:
-  - Waiting for hearback
-  - Denied
-  - Interview
+  - Applied
+  - Denied without interview (visa related)
+  - Denied without interview (non-visa related)
+  - Interview 1
   - Interview 2
   - Interview 3
   - Offer
+- **Status History / Audit Trail**: Automatically tracks all status changes with timestamps. View the complete history of when an application moved from Applied → Interview 1 → Interview 2, etc., directly on each application card
 - **Sorting**: Sort applications by company name, job role, applied date, status, or last updated date
 - **Notes / Additional Info**: Large free-text field for IDs, confirmation numbers, interview details, etc. Shown on cards and editable in Add/Edit
-- **Clickable Summary Filters**: Click any header card (Total, Waiting for hearback, Denied, Interview x, Offer) to filter the list; combines with search
+- **Clickable Summary Filters**: Click any header card (Total, Applied, Denied, Interview x, Offer) to filter the list; combines with search
 - **Authentication**: Protected with login via environment variables (`FLASK_USERNAME`, `FLASK_PASSWORD`)
 - **Edit/Delete**: Update or remove existing applications
 - **Dark Mode**: Modern, easy-on-the-eyes dark theme
@@ -76,7 +78,7 @@ A personal desktop web application for tracking job applications with a modern d
 
 ## Testing
 
-The project includes comprehensive unit tests to ensure reliability and maintainability. The test suite includes **43 tests** covering all major functionality.
+The project includes comprehensive unit tests to ensure reliability and maintainability. The test suite includes **48 tests** covering all major functionality.
 
 ### Running Tests
 
@@ -123,11 +125,12 @@ python run_tests.py quick      # Run tests with quick failure mode
 The test suite covers:
 
 - **Database Operations**: 
-  - Schema creation and validation (including `notes` field)
+  - Schema creation and validation (including `notes` field and `status_history` table)
   - Constraints and data integrity
   - Auto-increment IDs
-  - Default values
+  - Default values (including default status 'Applied')
   - Optional fields (URL, notes)
+  - Status history table schema and foreign key relationships
 
 - **API Endpoints**: 
   - CRUD operations (Create, Read, Update, Delete)
@@ -135,10 +138,12 @@ The test suite covers:
   - Missing required fields
   - Invalid data handling
   - Notes field in add/edit operations
-  - API response format and structure
+  - Status history tracking on add/edit
+  - API response format and structure (including status_history)
+  - All status types (Applied, Denied without interview variants, Interview 1-3, Offer)
 
 - **Summary Statistics**: 
-  - Accurate counting by status
+  - Accurate counting by status (including new status names)
   - Empty database handling
   - Multiple applications aggregation
   - Status consistency checks
@@ -148,19 +153,27 @@ The test suite covers:
   - All routes require authentication in tests
   - Test credentials are managed automatically
 
+- **Status History / Audit Trail**: 
+  - Status history recorded when adding applications
+  - Status history updated when status changes
+  - Status history not duplicated when status unchanged
+  - Multiple status changes tracked correctly
+  - Status history included in API responses
+
 - **Edge Cases**: 
   - Invalid data types
   - Missing fields
   - Non-existent records
   - Empty optional fields
+  - Status migration from old to new names
 
 ### Test Structure
 
 ```
 tests/
 ├── conftest.py          # Test configuration, fixtures, and authentication setup
-├── test_database.py     # Database operation and schema tests (7 tests)
-├── test_api.py          # API endpoint and CRUD tests (21 tests)
+├── test_database.py     # Database operation and schema tests (8 tests)
+├── test_api.py          # API endpoint and CRUD tests (25 tests)
 ├── test_summary.py      # Summary statistics tests (9 tests)
 └── test_app.py          # Application configuration and routing tests (6 tests)
 ```
@@ -184,18 +197,29 @@ tests/
 - Tests verify API responses include notes field
 - Database tests verify notes column exists and is nullable
 
+**Status History Testing:**
+- Tests verify status history is recorded when adding applications
+- Tests verify status history is updated when status changes
+- Tests ensure status history is not duplicated when status unchanged
+- Tests verify multiple status changes are tracked correctly
+- Tests verify status_history table schema and foreign key relationships
+- Database tests verify status_history table exists and has correct structure
+
 ### Example Test Output
 
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.9.5, pytest-7.4.3
-collected 43 items
+collected 48 items
 
 tests/test_api.py::test_add_application_with_notes PASSED              [ 41%]
+tests/test_api.py::test_status_history_on_add PASSED                   [ 51%]
+tests/test_api.py::test_status_history_multiple_changes PASSED         [ 81%]
 tests/test_database.py::test_notes_field_optional PASSED               [ 79%]
+tests/test_database.py::test_status_history_table_exists PASSED        [ 82%]
 ...
 
-============================= 43 passed in 1.25s ==============================
+============================= 48 passed in 2.07s ==============================
 ```
 
 ## Authentication
@@ -234,7 +258,8 @@ The application is protected with login authentication. You must log in before a
 
 ### Managing Applications
 - **View All**: See all applications in a card-based layout
-- **Filter by Status**: Click any summary header card (Total, Waiting for hearback, Denied, Interview, etc.) to filter by that status. Click "Total Applications" to clear the filter and show all.
+- **View Status History**: Each application card shows a complete audit trail of status changes with timestamps. See when an application moved from Applied → Interview 1 → Interview 2, etc.
+- **Filter by Status**: Click any summary header card (Total, Applied, Denied, Interview x, Offer) to filter by that status. Click "Total Applications" to clear the filter and show all.
 - **Search**: Type in the search bar for live filtering. Searches across:
   - Company name
   - Job role
@@ -242,8 +267,8 @@ The application is protected with login authentication. You must log in before a
   - Notes/Additional Information
   - Search works in combination with status filters (both filters apply simultaneously)
 - **Sort**: Use the sort dropdowns to organize by different criteria (applied date, company name, job role, status, or last updated)
-- **Edit**: Click "Edit" on any application card to modify details (including notes)
-- **Delete**: Click "Delete" to remove an application (with confirmation dialog)
+- **Edit**: Click "Edit" on any application card to modify details (including notes). Status changes are automatically tracked in the history.
+- **Delete**: Click "Delete" to remove an application (with confirmation dialog). This also removes all associated status history.
 
 ### Keyboard Shortcuts
 - `Ctrl/Cmd + N`: Add new application
@@ -280,7 +305,7 @@ Tracker/
 
 ## Database Schema
 
-The application uses a SQLite database with the following structure (includes `notes`):
+The application uses a SQLite database with the following structure:
 
 ```sql
 CREATE TABLE job_applications (
@@ -289,11 +314,21 @@ CREATE TABLE job_applications (
     job_role TEXT NOT NULL,
     applied_date DATE NOT NULL,
     url TEXT,
-    status TEXT NOT NULL DEFAULT 'Waiting for hearback',
+    status TEXT NOT NULL DEFAULT 'Applied',
     notes TEXT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES job_applications(id) ON DELETE CASCADE
+);
 ```
+
+**Status History Table**: The `status_history` table automatically tracks all status changes for audit purposes. Each time a status changes, a new entry is created with a timestamp. This allows you to see the complete timeline of an application's journey.
 
 ## Customization
 

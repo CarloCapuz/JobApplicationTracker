@@ -86,7 +86,7 @@ def test_edit_application_post_success(client, sample_data):
     
     # Then edit it
     updated_data = sample_data.copy()
-    updated_data['status'] = 'Interview'
+    updated_data['status'] = 'Interview 1'
     
     response = client.post('/edit/1', 
                          json=updated_data,
@@ -170,7 +170,7 @@ def test_add_application_with_url(client):
         'job_role': 'Test Role',
         'applied_date': '2024-01-01',
         'url': 'https://example.com/job',
-        'status': 'Waiting for hearback'
+        'status': 'Applied'
     }
     
     response = client.post('/add', 
@@ -187,7 +187,7 @@ def test_add_application_without_url(client):
         'company_name': 'Test Company',
         'job_role': 'Test Role',
         'applied_date': '2024-01-01',
-        'status': 'Waiting for hearback'
+        'status': 'Applied'
         # URL field is optional and will be handled by data.get('url', '')
     }
     
@@ -202,9 +202,10 @@ def test_add_application_without_url(client):
 def test_all_status_values(client):
     """Test adding applications with all possible status values."""
     statuses = [
-        'Waiting for hearback',
-        'Denied',
-        'Interview',
+        'Applied',
+        'Denied without interview (visa related)',
+        'Denied without interview (non-visa related)',
+        'Interview 1',
         'Interview 2',
         'Interview 3',
         'Offer'
@@ -233,7 +234,7 @@ def test_add_application_with_notes(client):
         'company_name': 'Test Company',
         'job_role': 'Test Role',
         'applied_date': '2024-01-01',
-        'status': 'Waiting for hearback',
+        'status': 'Applied',
         'notes': 'Application ID: 12345\nConfirmation: ABC123'
     }
     
@@ -258,7 +259,7 @@ def test_add_application_without_notes(client):
         'company_name': 'Test Company',
         'job_role': 'Test Role',
         'applied_date': '2024-01-01',
-        'status': 'Waiting for hearback'
+        'status': 'Applied'
     }
     
     response = client.post('/add', 
@@ -310,3 +311,89 @@ def test_api_applications_includes_notes(client, sample_data):
     assert len(data) == 1
     assert 'notes' in data[0]
     assert data[0]['notes'] == 'Test notes field'
+
+def test_status_history_on_add(client):
+    """Test that status history is recorded when adding an application."""
+    data = {
+        'company_name': 'Test Company',
+        'job_role': 'Test Role',
+        'applied_date': '2024-01-01',
+        'status': 'Applied'
+    }
+    
+    response = client.post('/add', json=data, content_type='application/json')
+    assert response.status_code == 200
+    
+    # Check API response includes status history
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert 'status_history' in apps[0]
+    assert len(apps[0]['status_history']) == 1
+    assert apps[0]['status_history'][0]['status'] == 'Applied'
+
+def test_status_history_on_edit(client, sample_data):
+    """Test that status history is recorded when status changes."""
+    # Add application
+    client.post('/add', json=sample_data, content_type='application/json')
+    
+    # Edit with status change
+    updated_data = sample_data.copy()
+    updated_data['status'] = 'Interview 1'
+    
+    response = client.post('/edit/1', json=updated_data, content_type='application/json')
+    assert response.status_code == 200
+    
+    # Check status history
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert 'status_history' in apps[0]
+    assert len(apps[0]['status_history']) == 2
+    assert apps[0]['status_history'][0]['status'] == 'Applied'
+    assert apps[0]['status_history'][1]['status'] == 'Interview 1'
+
+def test_status_history_no_duplicate_on_same_status(client, sample_data):
+    """Test that status history is not duplicated when status doesn't change."""
+    # Add application
+    client.post('/add', json=sample_data, content_type='application/json')
+    
+    # Edit without status change
+    updated_data = sample_data.copy()
+    updated_data['company_name'] = 'Updated Company'
+    
+    response = client.post('/edit/1', json=updated_data, content_type='application/json')
+    assert response.status_code == 200
+    
+    # Check status history - should still be only 1 entry
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert len(apps[0]['status_history']) == 1
+    assert apps[0]['status_history'][0]['status'] == 'Applied'
+
+def test_status_history_multiple_changes(client, sample_data):
+    """Test status history with multiple status changes."""
+    # Add application
+    client.post('/add', json=sample_data, content_type='application/json')
+    
+    # Change status multiple times
+    statuses = ['Interview 1', 'Interview 2', 'Offer']
+    for status in statuses:
+        updated_data = sample_data.copy()
+        updated_data['status'] = status
+        client.post('/edit/1', json=updated_data, content_type='application/json')
+    
+    # Check status history
+    api_response = client.get('/api/applications')
+    assert api_response.status_code == 200
+    apps = json.loads(api_response.data)
+    assert len(apps) == 1
+    assert len(apps[0]['status_history']) == 4  # Applied + 3 changes
+    assert apps[0]['status_history'][0]['status'] == 'Applied'
+    assert apps[0]['status_history'][1]['status'] == 'Interview 1'
+    assert apps[0]['status_history'][2]['status'] == 'Interview 2'
+    assert apps[0]['status_history'][3]['status'] == 'Offer'

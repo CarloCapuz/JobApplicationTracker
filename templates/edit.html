@@ -46,16 +46,20 @@
                     <label>Status *</label>
                     <div class="radio-group">
                         <label class="radio-label">
-                            <input type="radio" name="status" value="Waiting for hearback" {% if application.status == 'Waiting for hearback' %}checked{% endif %}>
-                            <span class="radio-text">Waiting for hearback</span>
+                            <input type="radio" name="status" value="Applied" {% if application.status == 'Applied' or application.status == 'Waiting for hearback' %}checked{% endif %}>
+                            <span class="radio-text">Applied</span>
                         </label>
                         <label class="radio-label">
-                            <input type="radio" name="status" value="Denied" {% if application.status == 'Denied' %}checked{% endif %}>
-                            <span class="radio-text">Denied</span>
+                            <input type="radio" name="status" value="Denied without interview (visa related)" {% if application.status == 'Denied without interview (visa related)' or application.status == 'Denied' %}checked{% endif %}>
+                            <span class="radio-text">Denied without interview (visa related)</span>
                         </label>
                         <label class="radio-label">
-                            <input type="radio" name="status" value="Interview" {% if application.status == 'Interview' %}checked{% endif %}>
-                            <span class="radio-text">Interview</span>
+                            <input type="radio" name="status" value="Denied without interview (non-visa related)" {% if application.status == 'Denied without interview (non-visa related)' %}checked{% endif %}>
+                            <span class="radio-text">Denied without interview (non-visa related)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="Interview 1" {% if application.status == 'Interview 1' or application.status == 'Interview' %}checked{% endif %}>
+                            <span class="radio-text">Interview 1</span>
                         </label>
                         <label class="radio-label">
                             <input type="radio" name="status" value="Interview 2" {% if application.status == 'Interview 2' %}checked{% endif %}>

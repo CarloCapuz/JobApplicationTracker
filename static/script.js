@@ -53,9 +53,10 @@ function loadSummary() {
         .then(response => response.json())
         .then(data => {
             document.getElementById('total-count').textContent = data.total;
-            document.getElementById('waiting-count').textContent = data.by_status['Waiting for hearback'] || 0;
-            document.getElementById('denied-count').textContent = data.by_status['Denied'] || 0;
-            document.getElementById('interview-count').textContent = data.by_status['Interview'] || 0;
+            document.getElementById('applied-count').textContent = data.by_status['Applied'] || 0;
+            document.getElementById('denied-visa-count').textContent = data.by_status['Denied without interview (visa related)'] || 0;
+            document.getElementById('denied-nonvisa-count').textContent = data.by_status['Denied without interview (non-visa related)'] || 0;
+            document.getElementById('interview1-count').textContent = data.by_status['Interview 1'] || 0;
             document.getElementById('interview2-count').textContent = data.by_status['Interview 2'] || 0;
             document.getElementById('interview3-count').textContent = data.by_status['Interview 3'] || 0;
             document.getElementById('offer-count').textContent = data.by_status['Offer'] || 0;
@@ -128,11 +129,18 @@ function renderApplications() {
         return;
     }
     
-    grid.innerHTML = filteredApplications.map(app => `
+    grid.innerHTML = filteredApplications.map(app => {
+        // Create CSS-safe status class name
+        const statusClass = app.status.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[()]/g, '')
+            .replace(/\//g, '-');
+        
+        return `
         <div class="application-card fade-in" data-status="${app.status}" data-app-id="${app.id}">
             <div class="card-header">
                 <h3>${app.company_name}</h3>
-                <span class="status-badge status-${app.status.toLowerCase().replace(' ', '-')}">
+                <span class="status-badge status-${statusClass}">
                     ${app.status}
                 </span>
             </div>
@@ -146,6 +154,19 @@ function renderApplications() {
                     <p><strong>Notes:</strong></p>
                     <p class="notes-text">${app.notes.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
                 </div>` : ''}
+                ${app.status_history && app.status_history.length > 0 ? `
+                <div class="status-history-section">
+                    <p><strong>Status History:</strong></p>
+                    <div class="status-history">
+                        ${app.status_history.map((entry, idx) => `
+                            <div class="history-entry">
+                                <span class="history-status">${entry.status.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                                <span class="history-date">${entry.changed_at}</span>
+                                ${idx < app.status_history.length - 1 ? '<span class="history-arrow">→</span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
                 <p><strong>Last Updated:</strong> ${app.last_updated}</p>
             </div>
             
@@ -154,7 +175,8 @@ function renderApplications() {
                 <button onclick="deleteApplication(${app.id})" class="btn btn-danger">Delete</button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Sort functionality
